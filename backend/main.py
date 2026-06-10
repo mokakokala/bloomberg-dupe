@@ -459,7 +459,11 @@ def _cik_map() -> dict[str, int]:
 
 @app.get("/api/filings/{symbol}")
 def filings(symbol: str):
-    sym = symbol.upper().split(".")[0]
+    sym = symbol.upper()
+    if "." in sym:
+        # Yahoo exchange suffixes (.PA, .DE, …) mean non-US listing; stripping
+        # them would silently match an unrelated US ticker in the SEC map.
+        raise HTTPException(404, f"{symbol} is not US-listed — SEC EDGAR covers US filers only")
     cik = _cik_map().get(sym)
     if cik is None:
         raise HTTPException(404, f"{symbol} not found in SEC EDGAR (US-listed only)")
