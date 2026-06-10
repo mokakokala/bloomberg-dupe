@@ -47,6 +47,7 @@ export default function Help() {
       </table>
       <div className="pad dim">
         <p>Type a command in the bar at the top, then press Enter (&lt;GO&gt;).</p>
+        <p><span className="orange">BACK</span> (or <span className="orange">MENU</span>) returns the active panel to its previous view — or click the <span className="orange">←</span> arrow in the panel header.</p>
         <p>A bare ticker (e.g. <span className="orange">RNO.PA</span>) loads it in the active panel. Click a panel to make it active. Double-click a panel header to maximize it.</p>
         <p>Tickers use Yahoo Finance notation: AAPL, MC.PA (Paris), BMW.DE, ^GSPC (index), EURUSD=X, BTC-USD, GC=F (futures).</p>
       </div>

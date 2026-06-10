@@ -89,6 +89,8 @@ export default function App() {
   const [message, setMessage] = useState<string | null>(null);
   const [alerts, setAlerts] = useStored<Alert[]>("alerts", []);
   const [alertFlash, setAlertFlash] = useState<string | null>(null);
+  // Per-panel navigation history (in-memory; cleared on reload).
+  const [histories, setHistories] = useState<PanelState[][]>([[], [], [], []]);
   const inputRef = useRef<HTMLInputElement>(null);
   const alertsRef = useRef(alerts);
   alertsRef.current = alerts;
@@ -141,11 +143,29 @@ export default function App() {
   }, [setAlerts]);
 
   const applyToPanel = (idx: number, state: PanelState) => {
+    setHistories((prev) =>
+      prev.map((h, i) => (i === idx ? [...h, panels[idx]].slice(-20) : h)),
+    );
     setPanels((prev) => prev.map((p, i) => (i === idx ? state : p)));
   };
 
+  const goBack = (idx: number) => {
+    const h = histories[idx];
+    if (h.length === 0) return;
+    const previous = h[h.length - 1];
+    setHistories((prev) => prev.map((x, i) => (i === idx ? x.slice(0, -1) : x)));
+    setPanels((prev) => prev.map((p, i) => (i === idx ? previous : p)));
+  };
+
   const run = () => {
-    if (!cmd.trim()) return;
+    const trimmed = cmd.trim().toUpperCase();
+    if (!trimmed) return;
+    if (trimmed === "BACK" || trimmed === "MENU") {
+      goBack(active);
+      setCmd("");
+      setMessage(null);
+      return;
+    }
     const result = parseCommand(cmd, panels[active]);
     if ("error" in result) {
       setMessage(result.error);
@@ -204,6 +224,8 @@ export default function App() {
               state={p}
               active={active === i}
               maximized={maximized === i}
+              canGoBack={histories[i].length > 0}
+              onBack={() => goBack(i)}
               onFocus={() => setActive(i)}
               onToggleMax={() => setMaximized(maximized === i ? null : i)}
             >
