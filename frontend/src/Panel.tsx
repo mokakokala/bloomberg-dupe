@@ -18,7 +18,12 @@ export default function Panel({
   onToggleMax: () => void;
   children: ReactNode;
 }) {
-  const title = `${state.ticker ? state.ticker + " " : ""}${state.func} — ${FUNCTIONS[state.func].label}`;
+  const tickerPart = state.tickers?.length
+    ? state.tickers.join(" ") + " "
+    : state.ticker
+      ? state.ticker + " "
+      : "";
+  const title = `${tickerPart}${state.func} — ${FUNCTIONS[state.func].label}`;
   return (
     <div className={`panel ${active ? "active" : ""}`} onMouseDown={onFocus}>
       <div className="panel-header" onDoubleClick={onToggleMax} title="Double-click to maximize">

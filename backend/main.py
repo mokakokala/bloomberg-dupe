@@ -410,6 +410,83 @@ def eco():
     return cached("eco", 3600, fetch)
 
 
+# ---------------------------------------------------------------- calendar (CAL)
+
+def _calendar_one(symbol: str) -> dict | None:
+    try:
+        cal = yf.Ticker(symbol).calendar or {}
+        earnings = cal.get("Earnings Date") or []
+        exdiv = cal.get("Ex-Dividend Date")
+        return {
+            "symbol": symbol,
+            "earnings": [d.isoformat() for d in earnings][:2],
+            "exDividend": exdiv.isoformat() if exdiv else None,
+            "epsEstimate": cal.get("Earnings Average"),
+            "revenueEstimate": cal.get("Revenue Average"),
+        }
+    except Exception:
+        return None
+
+
+@app.get("/api/calendar")
+def calendar(symbols: str):
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()][:25]
+
+    def fetch():
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            rows = list(ex.map(_calendar_one, syms))
+        return [r for r in rows if r and (r["earnings"] or r["exDividend"])]
+
+    return cached(f"cal:{','.join(syms)}", 3600, fetch)
+
+
+# ---------------------------------------------------------------- SEC filings (FIL)
+
+SEC_HEADERS = {"User-Agent": "terminal-project contact@example.com"}
+
+
+def _cik_map() -> dict[str, int]:
+    def fetch():
+        r = requests.get(
+            "https://www.sec.gov/files/company_tickers.json",
+            headers=SEC_HEADERS, timeout=20,
+        )
+        r.raise_for_status()
+        return {v["ticker"].upper(): int(v["cik_str"]) for v in r.json().values()}
+
+    return cached("sec:ciks", 86400, fetch)
+
+
+@app.get("/api/filings/{symbol}")
+def filings(symbol: str):
+    sym = symbol.upper().split(".")[0]
+    cik = _cik_map().get(sym)
+    if cik is None:
+        raise HTTPException(404, f"{symbol} not found in SEC EDGAR (US-listed only)")
+
+    def fetch():
+        r = requests.get(
+            f"https://data.sec.gov/submissions/CIK{cik:010d}.json",
+            headers=SEC_HEADERS, timeout=20,
+        )
+        r.raise_for_status()
+        recent = r.json().get("filings", {}).get("recent", {})
+        out = []
+        forms = recent.get("form", [])
+        for i in range(min(len(forms), 40)):
+            accession = recent["accessionNumber"][i].replace("-", "")
+            doc = recent["primaryDocument"][i]
+            out.append({
+                "form": forms[i],
+                "date": recent["filingDate"][i],
+                "description": recent["primaryDocDescription"][i] or doc,
+                "url": f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{doc}",
+            })
+        return out
+
+    return cached(f"fil:{cik}", 3600, fetch)
+
+
 # ---------------------------------------------------------------- search
 
 @app.get("/api/search")

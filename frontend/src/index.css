@@ -301,6 +301,26 @@ body { background: var(--bg); color: var(--white); overflow: hidden; }
 .q-bigprice { font-size: 34px; font-weight: bold; }
 .q-bigchange { font-size: 16px; }
 
+/* ---------------- alerts / live / filings ---------------- */
+
+.alert-banner { background: #3a2a00; color: var(--amber); cursor: pointer; }
+.alert-hit td { background: #2a1208; }
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dim);
+  margin-right: 6px;
+}
+.live-dot.on { background: var(--up); box-shadow: 0 0 4px var(--up); }
+
+.filing-link { color: var(--white); text-decoration: none; }
+.filing-link:hover { color: var(--amber); }
+
+.gp-sep { width: 8px; }
+
 /* ---------------- misc ---------------- */
 
 .spark { vertical-align: middle; }

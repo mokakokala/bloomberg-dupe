@@ -4,33 +4,22 @@ import {
   CandlestickSeries,
   LineSeries,
   HistogramSeries,
-  type IChartApi,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { usePoll } from "../hooks";
 import type { Bar, Quote } from "../api";
 import { fmtNum, fmtPct, fmtChange, upDownClass } from "../format";
+import { sma, bollinger, rsi, macd } from "../indicators";
 
 const RANGES = ["1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "MAX"];
 
-function sma(bars: Bar[], length: number) {
-  const out: { time: UTCTimestamp; value: number }[] = [];
-  let sum = 0;
-  for (let i = 0; i < bars.length; i++) {
-    sum += bars[i].close;
-    if (i >= length) sum -= bars[i - length].close;
-    if (i >= length - 1) {
-      out.push({ time: bars[i].time as UTCTimestamp, value: sum / length });
-    }
-  }
-  return out;
-}
-
-export default function Gp({ ticker }: { ticker: string }) {
-  const [range, setRange] = useState("1Y");
+export default function Gp({ ticker, initialRange = "1Y" }: { ticker: string; initialRange?: string }) {
+  const [range, setRange] = useState(initialRange);
   const [candles, setCandles] = useState(true);
+  const [showBoll, setShowBoll] = useState(false);
+  const [showRsi, setShowRsi] = useState(false);
+  const [showMacd, setShowMacd] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
 
   const hist = usePoll<{ bars: Bar[] }>(
     `/history/${ticker}?range=${range}`,
@@ -49,6 +38,7 @@ export default function Gp({ ticker }: { ticker: string }) {
         textColor: "#999999",
         fontSize: 11,
         attributionLogo: false,
+        panes: { separatorColor: "#2a2a2a", enableResize: true },
       },
       grid: {
         vertLines: { color: "#1a1a1a" },
@@ -61,7 +51,6 @@ export default function Gp({ ticker }: { ticker: string }) {
       timeScale: { borderColor: "#333333", timeVisible: range === "1D" || range === "5D" },
       rightPriceScale: { borderColor: "#333333" },
     });
-    chartRef.current = chart;
 
     const bars = hist.data.bars;
     if (candles) {
@@ -79,14 +68,24 @@ export default function Gp({ ticker }: { ticker: string }) {
       series.setData(bars.map((b) => ({ time: b.time as UTCTimestamp, value: b.close })));
     }
 
-    if (bars.length > 60) {
-      const ma = chart.addSeries(LineSeries, {
-        color: "#2196f3",
-        lineWidth: 1,
+    const overlayLine = (color: string, width: 1 | 2 = 1) =>
+      chart.addSeries(LineSeries, {
+        color,
+        lineWidth: width,
         priceLineVisible: false,
         lastValueVisible: false,
+        crosshairMarkerVisible: false,
       });
-      ma.setData(sma(bars, 50));
+
+    if (bars.length > 60 && !showBoll) {
+      overlayLine("#2196f3").setData(sma(bars, 50));
+    }
+
+    if (showBoll && bars.length > 20) {
+      const bb = bollinger(bars);
+      overlayLine("#9c27b0").setData(bb.upper);
+      overlayLine("#9c27b0").setData(bb.lower);
+      overlayLine("#7e57c2").setData(bb.mid);
     }
 
     const vol = chart.addSeries(HistogramSeries, {
@@ -103,14 +102,54 @@ export default function Gp({ ticker }: { ticker: string }) {
       })),
     );
 
+    let pane = 1;
+    if (showRsi && bars.length > 15) {
+      const series = chart.addSeries(
+        LineSeries,
+        { color: "#ffb000", lineWidth: 1, priceLineVisible: false },
+        pane,
+      );
+      series.setData(rsi(bars));
+      series.createPriceLine({ price: 70, color: "#5c1f1b", lineStyle: 2, title: "70" });
+      series.createPriceLine({ price: 30, color: "#1b4d2e", lineStyle: 2, title: "30" });
+      chart.panes()[pane]?.setHeight(90);
+      pane++;
+    }
+
+    if (showMacd && bars.length > 35) {
+      const m = macd(bars);
+      const histSeries = chart.addSeries(
+        HistogramSeries,
+        { priceLineVisible: false, lastValueVisible: false },
+        pane,
+      );
+      histSeries.setData(m.histogram);
+      const lineSeries = chart.addSeries(
+        LineSeries,
+        { color: "#2196f3", lineWidth: 1, priceLineVisible: false },
+        pane,
+      );
+      lineSeries.setData(m.line);
+      const signalSeries = chart.addSeries(
+        LineSeries,
+        { color: "#fb8b1e", lineWidth: 1, priceLineVisible: false, lastValueVisible: false },
+        pane,
+      );
+      signalSeries.setData(m.signal);
+      chart.panes()[pane]?.setHeight(90);
+    }
+
     chart.timeScale().fitContent();
-    return () => {
-      chart.remove();
-      chartRef.current = null;
-    };
-  }, [hist.data, candles, range]);
+    return () => chart.remove();
+  }, [hist.data, candles, range, showBoll, showRsi, showMacd]);
 
   const q = quote.data;
+  const toggle = (label: string, on: boolean, set: (v: boolean) => void) => (
+    <button className={`rangebtn ${on ? "active" : ""}`} onClick={() => set(!on)}>
+      {label}
+    </button>
+  );
+
   return (
     <div className="view gp">
       <div className="gp-header">
@@ -135,9 +174,13 @@ export default function Gp({ ticker }: { ticker: string }) {
               {r}
             </button>
           ))}
+          <span className="gp-sep" />
           <button className="rangebtn" onClick={() => setCandles(!candles)}>
             {candles ? "LINE" : "CNDL"}
           </button>
+          {toggle("BOLL", showBoll, setShowBoll)}
+          {toggle("RSI", showRsi, setShowRsi)}
+          {toggle("MACD", showMacd, setShowMacd)}
         </span>
       </div>
       {hist.error && <div className="error">⚠ {hist.error}</div>}

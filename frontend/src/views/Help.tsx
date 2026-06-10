@@ -2,10 +2,13 @@ import { FUNCTIONS, type Func } from "../commands";
 
 const EXAMPLES: Record<Func, string> = {
   GP: "AAPL GP",
+  GIP: "AAPL GIP",
+  COMP: "COMP AAPL MSFT GOOG",
   DES: "MC.PA DES",
   FA: "MSFT FA",
   Q: "NVDA Q",
   N: "TSLA N",
+  FIL: "AAPL FIL",
   WEI: "WEI",
   FXC: "FXC",
   CRYP: "CRYP",
@@ -13,8 +16,10 @@ const EXAMPLES: Record<Func, string> = {
   TOP: "TOP",
   EQS: "EQS",
   ECO: "ECO",
+  CAL: "CAL",
   W: "W",
   PORT: "PORT",
+  ALRT: "ALRT",
   HELP: "HELP",
 };
 
