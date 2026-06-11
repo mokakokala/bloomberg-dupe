@@ -60,7 +60,7 @@ Le terminal s'utilise comme le vrai Bloomberg : **une ligne de commande en haut*
 | `CRYP` | — | Cryptomonnaies en **temps réel** (websocket Binance) |
 | `CMDTY` | GLCO | Matières premières (métaux, énergie, agri) |
 | `EQS` | EQS / MOST | Screener : plus fortes hausses / baisses / volumes du jour |
-| `ECO` | ECO / ECST | Indicateurs macro US : CPI, chômage, taux Fed, courbe des taux… |
+| `ECO` | ECO / ECST | Indicateurs macro — onglets **EUROPE** (inflation HICP, taux BCE, chômage, PIB, 10 ans DE/FR/BE/IT) et **US** (CPI, taux Fed, courbe des taux…) |
 | `CAL` | EVTS / ERN | Prochains résultats (+ estimations EPS/CA) et ex-dividendes de ta watchlist |
 | `W` | W | Watchlist personnalisée |
 | `PORT` | PORT | Portefeuille : valeur, P&L du jour et total |
@@ -103,6 +103,7 @@ Les tickers utilisent la notation Yahoo Finance : `AAPL`, `MC.PA` (Paris), `BMW.
 | Screener (gainers/losers/actifs) | **Yahoo Finance** | screeners prédéfinis Yahoo | ~15 min |
 | Calendrier résultats/dividendes | **Yahoo Finance** | par ticker | quotidien |
 | Macro US (CPI, taux, chômage…) | **FRED** — Federal Reserve Bank of St. Louis | export CSV public, sans clé API | à chaque publication officielle |
+| Macro zone euro (HICP, taux BCE, PIB…) | **ECB Data Portal** — Banque centrale européenne | API SDMX publique (CSV), sans clé API | à chaque publication officielle |
 | Filings réglementaires | **SEC EDGAR** | API JSON officielle et gratuite de la SEC | temps réel (dépôts officiels) |
 | News marchés (`TOP`) | **Flux RSS** : CNBC, MarketWatch, Yahoo, Investing.com | agrégés et triés par date | ~5 min |
 | Crypto (`CRYP`) | **Binance** | websocket public, connexion directe depuis ton navigateur | **temps réel** (la seule donnée vraiment live) |
@@ -116,7 +117,6 @@ Soyons honnêtes sur ce qu'un terminal à 0 €/mois ne peut pas faire face à u
 - **Pas de chat IB** : la messagerie entre professionnels est *le* produit Bloomberg, irremplaçable par nature.
 - **Profondeur limitée** : ~4-5 ans d'états financiers (Bloomberg en a 30+), estimations d'analystes réduites au consensus Yahoo, pas de transcripts d'earnings calls, pas de données alternatives.
 - **Screener basique** : 3 listes prédéfinies, pas de requêtes multicritères à la EQS.
-- **Macro US seulement** dans `ECO` (FRED est américain) — extensible avec l'ECB Data Portal ou Eurostat.
 - **Fiabilité best-effort** : l'API Yahoo n'est pas officielle ; elle peut changer ou limiter les requêtes sans préavis. La lib `yfinance` est très maintenue et suit ces changements, mais une mise à jour (`pip install -U yfinance`) peut être nécessaire un jour.
 - **Usage informatif uniquement** : ne pas trader sur ces données. Usage personnel (les conditions Yahoo interdisent l'usage commercial).
 

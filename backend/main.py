@@ -410,6 +410,66 @@ def eco():
     return cached("eco", 3600, fetch)
 
 
+# ---------------------------------------------------------------- macro Europe (ECO) — ECB Data Portal, no key needed
+
+ECB_SERIES = [
+    ("ICP/M.U2.N.000000.4.ANR", "Euro area inflation (HICP, % YoY)"),
+    ("ICP/M.U2.N.XEF000.4.ANR", "Core inflation ex energy/food (% YoY)"),
+    ("FM/B.U2.EUR.4F.KR.DFR.LEV", "ECB deposit facility rate %"),
+    ("FM/B.U2.EUR.4F.KR.MRR_FR.LEV", "ECB main refinancing rate %"),
+    ("LFSI/M.I9.S.UNEHRT.TOTAL0.15_74.T", "Euro area unemployment rate %"),
+    ("MNA/Q.Y.I9.W2.S1.S1.B.B1GQ._Z._Z._Z.EUR.LR.GY", "Euro area real GDP (% YoY)"),
+    ("BSI/M.U2.Y.V.M30.X.I.U2.2300.Z01.A", "M3 money supply (% YoY)"),
+    ("EXR/D.USD.EUR.SP00.A", "EUR/USD (ECB reference)"),
+    ("IRS/M.DE.L.L40.CI.0000.EUR.N.Z", "Germany 10Y yield %"),
+    ("IRS/M.FR.L.L40.CI.0000.EUR.N.Z", "France 10Y yield %"),
+    ("IRS/M.BE.L.L40.CI.0000.EUR.N.Z", "Belgium 10Y yield %"),
+    ("IRS/M.IT.L.L40.CI.0000.EUR.N.Z", "Italy 10Y yield %"),
+]
+
+
+def _ecb_series(path: str) -> list[tuple[str, float]]:
+    url = f"https://data-api.ecb.europa.eu/service/data/{path}"
+    r = requests.get(
+        url,
+        params={"format": "csvdata", "lastNObservations": 400},
+        timeout=20,
+        headers={"User-Agent": "terminal/1.0"},
+    )
+    r.raise_for_status()
+    out = []
+    for row in csv.DictReader(io.StringIO(r.text)):
+        val = row.get("OBS_VALUE", "")
+        if val:
+            out.append((row["TIME_PERIOD"], float(val)))
+    return out
+
+
+def _ecb_one(args):
+    path, label = args
+    try:
+        data = _ecb_series(path)
+        if not data:
+            return None
+        date, last = data[-1]
+        return {
+            "id": path, "label": label, "value": round(last, 2), "suffix": "",
+            "date": date, "spark": [v for _, v in data[-60:]],
+        }
+    except Exception:
+        return None
+
+
+@app.get("/api/eco/eu")
+def eco_eu():
+    def fetch():
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            rows = list(ex.map(_ecb_one, ECB_SERIES))
+        return [r for r in rows if r]
+
+    return cached("eco:eu", 3600, fetch)
+
+
 # ---------------------------------------------------------------- calendar (CAL)
 
 def _calendar_one(symbol: str) -> dict | None:

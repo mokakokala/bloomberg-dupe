@@ -1,4 +1,4 @@
-import { usePoll } from "../hooks";
+import { usePoll, useStored } from "../hooks";
 import type { EcoRow } from "../api";
 import { fmtNum } from "../format";
 
@@ -20,41 +20,61 @@ function Spark({ values }: { values: number[] }) {
   );
 }
 
-export default function Eco() {
-  const { data, error, loading } = usePoll<EcoRow[]>("/eco", 3600000);
+const REGIONS = {
+  eu: { label: "EUROPE", path: "/eco/eu", title: "EURO AREA INDICATORS — source: ECB Data Portal" },
+  us: { label: "US", path: "/eco", title: "US ECONOMIC INDICATORS — source: FRED (St. Louis Fed)" },
+} as const;
 
-  if (error) return <div className="error pad">⚠ {error}</div>;
-  if (loading && !data) return <div className="dim pad">Loading FRED data…</div>;
-  if (!data) return null;
+type Region = keyof typeof REGIONS;
+
+export default function Eco() {
+  const [region, setRegion] = useStored<Region>("eco-region", "eu");
+  const r = REGIONS[region] ?? REGIONS.eu;
+  const { data, error, loading } = usePoll<EcoRow[]>(r.path, 3600000);
 
   return (
     <div className="view">
-      <div className="section-title pad-h">US ECONOMIC INDICATORS — source: FRED (St. Louis Fed)</div>
-      <table className="grid-table">
-        <thead>
-          <tr>
-            <th className="left">INDICATOR</th>
-            <th>VALUE</th>
-            <th>AS OF</th>
-            <th className="left">TREND (5Y)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((r) => (
-            <tr key={r.id}>
-              <td className="left orange">{r.label}</td>
-              <td className="white">
-                {fmtNum(r.value)}
-                <span className="dim">{r.suffix}</span>
-              </td>
-              <td className="dim">{r.date}</td>
-              <td className="left">
-                <Spark values={r.spark} />
-              </td>
+      <div className="tabs">
+        {(Object.keys(REGIONS) as Region[]).map((k) => (
+          <button
+            key={k}
+            className={`tab ${region === k ? "active" : ""}`}
+            onClick={() => setRegion(k)}
+          >
+            {REGIONS[k].label}
+          </button>
+        ))}
+      </div>
+      <div className="section-title pad-h">{r.title}</div>
+      {error && <div className="error pad">⚠ {error}</div>}
+      {loading && !data && <div className="dim pad">Loading…</div>}
+      {data && (
+        <table className="grid-table">
+          <thead>
+            <tr>
+              <th className="left">INDICATOR</th>
+              <th>VALUE</th>
+              <th>AS OF</th>
+              <th className="left">TREND (5Y)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.id}>
+                <td className="left orange">{row.label}</td>
+                <td className="white">
+                  {fmtNum(row.value)}
+                  <span className="dim">{row.suffix}</span>
+                </td>
+                <td className="dim">{row.date}</td>
+                <td className="left">
+                  <Spark values={row.spark} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
